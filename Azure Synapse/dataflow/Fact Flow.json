@@ -1,0 +1,227 @@
+{
+	"name": "Fact Flow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "Transactions",
+						"type": "DatasetReference"
+					},
+					"name": "TransactionSource"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimDate2",
+						"type": "DatasetReference"
+					},
+					"name": "DimDateSource"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimCusrtomerF",
+						"type": "DatasetReference"
+					},
+					"name": "DimCustomerSource"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimProduct2",
+						"type": "DatasetReference"
+					},
+					"name": "DimProductSource"
+				},
+				{
+					"dataset": {
+						"referenceName": "InteractionSource",
+						"type": "DatasetReference"
+					},
+					"name": "InterSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "FactSales",
+						"type": "DatasetReference"
+					},
+					"name": "FactSales"
+				}
+			],
+			"transformations": [
+				{
+					"name": "lookupDateID"
+				},
+				{
+					"name": "select1"
+				},
+				{
+					"name": "lookupCustomerID"
+				},
+				{
+					"name": "select2"
+				},
+				{
+					"name": "lookuProductID"
+				},
+				{
+					"name": "select3"
+				},
+				{
+					"name": "lookup1"
+				},
+				{
+					"name": "select4"
+				},
+				{
+					"name": "surrogateKey1"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          TransactionID as integer,",
+				"          CustomerID as integer,",
+				"          ItemPurchased as string,",
+				"          Category as string,",
+				"          PurchaseAmount as decimal(10,2),",
+				"          Size as string,",
+				"          Color as string,",
+				"          Season as string,",
+				"          PaymentMethod as string,",
+				"          DateOfPurchase as date,",
+				"          DiscountApplied as string,",
+				"          PromoCodeUsed as string,",
+				"          ShippingType as string,",
+				"          AgentName as string,",
+				"          PreviousPurchases as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> TransactionSource",
+				"source(output(",
+				"          Season as string,",
+				"          DateOfPurchase as date,",
+				"          Year as integer,",
+				"          Month as integer,",
+				"          Day as integer,",
+				"          Quarter as integer,",
+				"          Week as integer,",
+				"          IsItWeekend as string,",
+				"          DateID as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> DimDateSource",
+				"source(output(",
+				"          CustomerID as integer,",
+				"          FirstName as string,",
+				"          LastName as string,",
+				"          Gender as string,",
+				"          Email as string,",
+				"          PhoneNumber as string,",
+				"          Location as string,",
+				"          SubscriptionStatus as string,",
+				"          YearOfBirth as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> DimCustomerSource",
+				"source(output(",
+				"          Name as string,",
+				"          Category as string,",
+				"          Price as string,",
+				"          ProducID as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> DimProductSource",
+				"source(output(",
+				"          InteractionID as integer,",
+				"          CustomerID as integer,",
+				"          ReviewRating as decimal(10,1),",
+				"          FrequencyOfPurchases as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> InterSource",
+				"TransactionSource, DimDateSource lookup(TransactionSource@DateOfPurchase == DimDateSource@DateOfPurchase,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> lookupDateID",
+				"lookupDateID select(mapColumn(",
+				"          TransactionID,",
+				"          CustomerID,",
+				"          ItemPurchased,",
+				"          PurchaseAmount,",
+				"          PreviousPurchases,",
+				"          DateID",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"select1, DimCustomerSource lookup(select1@CustomerID == DimCustomerSource@CustomerID,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> lookupCustomerID",
+				"lookupCustomerID select(mapColumn(",
+				"          TransactionID,",
+				"          CustomerID = select1@CustomerID,",
+				"          ItemPurchased,",
+				"          PurchaseAmount,",
+				"          PreviousPurchases,",
+				"          DateID,",
+				"          CustomerID = DimCustomerSource@CustomerID",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select2",
+				"select2, DimProductSource lookup(ItemPurchased == Name,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> lookuProductID",
+				"lookuProductID select(mapColumn(",
+				"          TransactionID,",
+				"          CustomerID,",
+				"          PurchaseAmount,",
+				"          PreviousPurchases,",
+				"          DateID,",
+				"          Price,",
+				"          ProducID",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select3",
+				"select3, InterSource lookup(select3@CustomerID == InterSource@CustomerID,",
+				"     multiple: false,",
+				"     pickup: 'any',",
+				"     broadcast: 'auto')~> lookup1",
+				"lookup1 select(mapColumn(",
+				"          CustomerID = select3@CustomerID,",
+				"          PurchaseAmount,",
+				"          PreviousPurchases,",
+				"          DateID,",
+				"          ProducID,",
+				"          CustomerID = InterSource@CustomerID,",
+				"          ReviewRating,",
+				"          FrequencyOfPurchases",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select4",
+				"select4 keyGenerate(output(FactSalesID as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> surrogateKey1",
+				"surrogateKey1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          Name as string,",
+				"          Category as string,",
+				"          Price as string,",
+				"          ProducID as string",
+				"     ),",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> FactSales"
+			]
+		}
+	}
+}

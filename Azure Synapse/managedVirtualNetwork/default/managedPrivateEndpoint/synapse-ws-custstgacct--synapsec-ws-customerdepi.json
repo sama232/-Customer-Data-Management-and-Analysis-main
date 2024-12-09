@@ -1,0 +1,7 @@
+{
+	"name": "synapse-ws-custstgacct--synapsec-ws-customerdepi",
+	"properties": {
+		"privateLinkResourceId": "/subscriptions/87445966-a3c3-45e4-a960-47f97ec62187/resourceGroups/CustomerData/providers/Microsoft.Storage/storageAccounts/customerdepi",
+		"groupId": "dfs"
+	}
+}

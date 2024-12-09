@@ -1,0 +1,197 @@
+{
+	"name": "Dim Flow",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DelimitedText1",
+						"type": "DatasetReference"
+					},
+					"name": "CustomerInfoSource"
+				},
+				{
+					"dataset": {
+						"referenceName": "Transactions",
+						"type": "DatasetReference"
+					},
+					"name": "TransactionSource1"
+				},
+				{
+					"dataset": {
+						"referenceName": "Transactions",
+						"type": "DatasetReference"
+					},
+					"name": "TransactionSource2"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DimCustomer",
+						"type": "DatasetReference"
+					},
+					"name": "DimCustomerSink"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimDate",
+						"type": "DatasetReference"
+					},
+					"name": "DimDatesink"
+				},
+				{
+					"dataset": {
+						"referenceName": "DimProduct",
+						"type": "DatasetReference"
+					},
+					"name": "DimProductSink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "YOB",
+					"description": "Getting year of birth from Age column"
+				},
+				{
+					"name": "select1"
+				},
+				{
+					"name": "derivedColumn1"
+				},
+				{
+					"name": "DateID"
+				},
+				{
+					"name": "select2"
+				},
+				{
+					"name": "aggregate1"
+				},
+				{
+					"name": "ProducID"
+				}
+			],
+			"scriptLines": [
+				"source(output(",
+				"          CustomerID as integer,",
+				"          FirstName as string,",
+				"          LastName as string,",
+				"          Age as integer,",
+				"          Gender as string,",
+				"          Email as string,",
+				"          PhoneNumber as string,",
+				"          Location as string,",
+				"          SubscriptionStatus as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> CustomerInfoSource",
+				"source(output(",
+				"          TransactionID as integer,",
+				"          CustomerID as integer,",
+				"          ItemPurchased as string,",
+				"          Category as string,",
+				"          PurchaseAmount as decimal(10,2),",
+				"          Size as string,",
+				"          Color as string,",
+				"          Season as string,",
+				"          PaymentMethod as string,",
+				"          DateOfPurchase as date,",
+				"          DiscountApplied as string,",
+				"          PromoCodeUsed as string,",
+				"          ShippingType as string,",
+				"          AgentName as string,",
+				"          PreviousPurchases as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> TransactionSource1",
+				"source(output(",
+				"          TransactionID as integer,",
+				"          CustomerID as integer,",
+				"          ItemPurchased as string,",
+				"          Category as string,",
+				"          PurchaseAmount as decimal(10,2),",
+				"          Size as string,",
+				"          Color as string,",
+				"          Season as string,",
+				"          PaymentMethod as string,",
+				"          DateOfPurchase as date,",
+				"          DiscountApplied as string,",
+				"          PromoCodeUsed as string,",
+				"          ShippingType as string,",
+				"          AgentName as string,",
+				"          PreviousPurchases as integer",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false) ~> TransactionSource2",
+				"CustomerInfoSource derive(YearOfBirth = year(currentDate())-Age) ~> YOB",
+				"TransactionSource1 select(mapColumn(",
+				"          Season,",
+				"          DateOfPurchase",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"select1 derive(Year = year(DateOfPurchase),",
+				"          Month = month(DateOfPurchase),",
+				"          Day = dayOfMonth(DateOfPurchase),",
+				"          Quarter = iif(toInteger(substring(toString(DateOfPurchase), 6, 2)) <= 3, 1, \r",
+				"    iif(toInteger(substring(toString(DateOfPurchase), 6, 2)) <= 6, 2, \r",
+				"        iif(toInteger(substring(toString(DateOfPurchase), 6, 2)) <= 9, 3, 4))),",
+				"          Week = weekOfYear(DateOfPurchase),",
+				"          IsItWeekend = iif(weekOfYear(DateOfPurchase) == 6 || weekOfYear(DateOfPurchase) == 7 , \"Yes\" , \"No\")) ~> derivedColumn1",
+				"derivedColumn1 keyGenerate(output(DateID as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> DateID",
+				"TransactionSource2 select(mapColumn(",
+				"          ItemPurchased,",
+				"          Category,",
+				"          PurchaseAmount",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select2",
+				"select2 aggregate(groupBy(Name = ItemPurchased,",
+				"          Category),",
+				"     Price = max(PurchaseAmount)) ~> aggregate1",
+				"aggregate1 keyGenerate(output(ProducID as long),",
+				"     startAt: 1L,",
+				"     stepValue: 1L) ~> ProducID",
+				"YOB sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     mapColumn(",
+				"          CustomerID,",
+				"          FirstName,",
+				"          LastName,",
+				"          Gender,",
+				"          Email,",
+				"          PhoneNumber,",
+				"          Location,",
+				"          SubscriptionStatus,",
+				"          YearOfBirth",
+				"     )) ~> DimCustomerSink",
+				"DateID sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> DimDatesink",
+				"ProducID sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     umask: 0022,",
+				"     preCommands: [],",
+				"     postCommands: [],",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> DimProductSink"
+			]
+		}
+	}
+}
